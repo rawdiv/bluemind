@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brahma AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="new-chat">
+                <button id="newChatBtn">
+                    <i class="fas fa-plus"></i>
+                    New Chat
+                </button>
+            </div>
+            <div class="chat-history">
+                <!-- Chat history will be populated here -->
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="chat-header">
+                <div class="chat-title">Brahma AI</div>
+                <div class="header-actions">
+                    <button class="header-btn" id="newChatHeaderBtn" title="New Chat">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="header-btn" id="optionsBtn" title="Options">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages will be populated here -->
+                </div>
+                <div class="input-container">
+                    <form id="chatForm">
+                        <div class="attachment-btn">
+                            <label for="fileInput" title="Attach a file">
+                                <i class="fas fa-paperclip"></i>
+                            </label>
+                            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" style="display: none">
+                        </div>
+                        <textarea 
+                            id="userInput" 
+                            placeholder="Message..." 
+                            rows="1"
+                            autofocus
+                        ></textarea>
+                        <button type="submit" id="sendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                    <div class="disclaimer">
+                        AI may produce inaccurate information about people, places, or facts.
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
