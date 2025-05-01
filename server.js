@@ -239,11 +239,31 @@ app.post('/api/chat', async (req, res) => {
         // Get formatted conversation history (excluding the current message)
         const conversationHistory = formatConversationHistory(contents);
         
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Get API key with fallback options 
+        let apiKey = process.env.GEMINI_API_KEY;
+        
+        // Add more detailed logging for API key issues
         if (!apiKey) {
+            console.error('[API KEY ERROR] GEMINI_API_KEY environment variable is not set');
+            console.log('Available environment variables:', Object.keys(process.env).join(', '));
             logRequest(req, res, 500, 'Server configuration error: Missing API key');
-            return res.status(500).json({ error: 'Server configuration error' });
+            return res.status(500).json({ 
+                error: 'Server configuration error', 
+                details: 'API key is not configured. Please check server logs.'
+            });
         }
+        
+        if (apiKey.trim() === '') {
+            console.error('[API KEY ERROR] GEMINI_API_KEY is empty');
+            logRequest(req, res, 500, 'Server configuration error: Empty API key');
+            return res.status(500).json({ 
+                error: 'Server configuration error', 
+                details: 'API key is empty. Please set a valid API key.'
+            });
+        }
+        
+        // Trim the API key to remove any accidental whitespace
+        apiKey = apiKey.trim();
         
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         
@@ -590,12 +610,94 @@ app.use((err, req, res, next) => {
 
 // Add a simple diagnostic route at the top level
 app.get('/debug', (req, res) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const maskedKey = apiKey ? 
+        `${apiKey.substring(0, 3)}...${apiKey.substring(apiKey.length - 3)}` : 
+        'Not configured';
+    
+    // List all environment variables (excluding sensitive values)
+    const safeEnvVars = {};
+    for (const key in process.env) {
+        // Skip sensitive environment variables and internal Node.js ones
+        if (key.toLowerCase().includes('key') || 
+            key.toLowerCase().includes('secret') || 
+            key.toLowerCase().includes('token') ||
+            key.toLowerCase().includes('password')) {
+            safeEnvVars[key] = '[REDACTED]';
+        } else if (!key.startsWith('_')) {
+            safeEnvVars[key] = process.env[key];
+        }
+    }
+    
     res.json({
+        status: 'Diagnostics Information',
         environment: process.env.NODE_ENV || 'development',
-        apiKeyConfigured: !!process.env.GEMINI_API_KEY,
+        apiKeyInfo: {
+            configured: !!apiKey,
+            empty: apiKey === '',
+            whitespace: apiKey && apiKey.trim() !== apiKey,
+            maskedValue: maskedKey
+        },
         nodeVersion: process.version,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        renderSpecific: {
+            isRender: !!process.env.RENDER,
+            renderServiceID: process.env.RENDER_SERVICE_ID || 'Not detected',
+            port: process.env.PORT || 3000
+        },
+        safeEnvironmentVariables: safeEnvVars
     });
+});
+
+// Test endpoint to verify API key functionality
+app.get('/api/test-key', async (req, res) => {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        
+        if (!apiKey) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'API key not configured',
+                checkEnv: true
+            });
+        }
+        
+        // Make a minimal API call to test the key
+        const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`;
+        
+        const response = await axios.get(testUrl, {
+            timeout: 10000
+        });
+        
+        return res.json({ 
+            success: true, 
+            models: response.data.models ? response.data.models.length : 0,
+            message: 'API key is valid and working correctly'
+        });
+    } catch (error) {
+        console.error('API key test failed:', error.message);
+        
+        // Check for specific error responses
+        if (error.response) {
+            const status = error.response.status;
+            const errorData = error.response.data;
+            
+            return res.status(status).json({
+                success: false,
+                error: 'API key test failed',
+                status: status,
+                details: errorData,
+                message: 'The API key appears to be invalid or has permission issues'
+            });
+        }
+        
+        return res.status(500).json({
+            success: false,
+            error: 'Connection error',
+            message: error.message,
+            hint: 'This might be a network issue or the Gemini API could be down'
+        });
+    }
 });
 
 // Export the Express app instead of starting it directly
