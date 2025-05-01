@@ -7,11 +7,15 @@ const fs = require('fs');
 const util = require('util');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Store conversation history
+// Store conversation history (in production, use a proper database)
 const sessions = new Map();
 
 // Configure multer for file uploads
@@ -29,22 +33,81 @@ const storage = multer.diskStorage({
     }
 });
 
+// Validate file types
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain', 
+                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                         'application/msword'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only images, PDFs, text, and Word documents are allowed.'), false);
+    }
+};
+
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: fileFilter
 });
 
 // Middleware
+// Use Helmet for additional security headers
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            // Allow inline styles and scripts for the UI
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://generativelanguage.googleapis.com"]
+        }
+    }
+}));
+
+// Apply compression middleware to compress responses
+app.use(compression());
+
+// Apply more advanced rate limiting
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: { error: 'Too many requests, please try again later' }
+});
+
+// Apply the rate limiting middleware to API routes
+app.use('/api/', apiLimiter);
+
+// Apply CORS
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Security headers (using both helmet and custom headers for fallback)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    next();
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: isProduction ? '1d' : 0 // Set cache control headers in production
+}));
 
 // Create uploads directory for serving files
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, {
+    maxAge: isProduction ? '4h' : 0 // Set cache control headers in production
+}));
 
 // Add a function to format conversation history into a text format
 function formatConversationHistory(conversation) {
@@ -66,13 +129,68 @@ function formatConversationHistory(conversation) {
     return formattedHistory;
 }
 
+// Rate limiting (basic implementation)
+const requestCounts = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 20;
+
+function rateLimiter(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    
+    if (!requestCounts.has(ip)) {
+        requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    } else {
+        const data = requestCounts.get(ip);
+        
+        if (now > data.resetTime) {
+            // Window expired, reset
+            data.count = 1;
+            data.resetTime = now + RATE_LIMIT_WINDOW;
+        } else {
+            // Increment request count
+            data.count++;
+        }
+        
+        if (data.count > MAX_REQUESTS_PER_WINDOW) {
+            return res.status(429).json({ 
+                error: 'Too many requests, please try again later',
+                retryAfter: Math.ceil((data.resetTime - now) / 1000)
+            });
+        }
+    }
+    next();
+}
+
+// Apply rate limiter to API routes
+app.use('/api/', rateLimiter);
+
+// Logging function
+function logRequest(req, res, statusCode, message = '') {
+    const timestamp = new Date().toISOString();
+    const method = req.method;
+    const url = req.originalUrl;
+    const ip = req.ip || req.connection.remoteAddress;
+    
+    console.log(`[${timestamp}] ${method} ${url} ${statusCode} - IP: ${ip} ${message}`);
+}
+
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
+    const startTime = Date.now();
+    
     try {
         const { message, sessionId = 'default', systemInstruction, attachment } = req.body;
         
         if (!message && !attachment) {
+            logRequest(req, res, 400, 'Bad request: Message or attachment is required');
             return res.status(400).json({ error: 'Message or attachment is required' });
+        }
+
+        // Validate sessionId
+        if (typeof sessionId !== 'string' || sessionId.length > 50) {
+            logRequest(req, res, 400, 'Bad request: Invalid sessionId');
+            return res.status(400).json({ error: 'Invalid sessionId' });
         }
 
         // Get or create session
@@ -118,6 +236,11 @@ app.post('/api/chat', async (req, res) => {
         const conversationHistory = formatConversationHistory(contents);
         
         const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            logRequest(req, res, 500, 'Server configuration error: Missing API key');
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+        
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         
         // Custom prompt engineering to override the model's default behavior
@@ -172,13 +295,15 @@ User's message: ${finalPrompt}`;
         const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
         try {
-            console.log('Sending request to Gemini API:', JSON.stringify(requestBody.contents));
+            // Log only a safe version of the request (no full prompt to avoid logging sensitive info)
+            console.log(`[${new Date().toISOString()}] Sending request to Gemini API - sessionId: ${sessionId} - msg length: ${finalPrompt.length}`);
             
             const response = await axios.post(apiUrl, requestBody, {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                signal: controller.signal
+                signal: controller.signal,
+                timeout: 25000 // Additional timeout at axios level
             });
             
             // Clear the timeout since we got a response
@@ -198,72 +323,60 @@ User's message: ${finalPrompt}`;
                 responseText = responseText.replace(/Brahma AI here|Quant here/g, '');
                 
                 // Add AI response to conversation history
-                conversation.push({ 
-                    role: 'model', 
-                    parts: [{ text: responseText }] 
-                });
-            } else if (response.data.promptFeedback && response.data.promptFeedback.blockReason) {
-                // Handle content blocked by safety settings
-                responseText = `I'm unable to provide a response to that query due to content safety policies. (Reason: ${response.data.promptFeedback.blockReason})`;
+                conversation.push({ role: 'model', parts: [{ text: responseText }] });
                 
-                // Don't add blocked responses to history
-            }
-            
-            // Handle file conversion requests
-            let fileOutput = null;
-            
-            // Check if the user requested a file conversion or export
-            if (attachment && 
-                (message.toLowerCase().includes('convert to pdf') || 
-                message.toLowerCase().includes('export as pdf') ||
-                message.toLowerCase().includes('make a pdf') ||
-                message.toLowerCase().includes('create pdf'))) {
+                // Limit conversation history length to prevent memory issues
+                if (conversation.length > 20) {
+                    conversation.splice(0, conversation.length - 20);
+                }
                 
-                // In a real implementation, you would do actual conversion here
-                // For now, we'll just pass through the original file
-                fileOutput = {
-                    name: attachment.originalName.replace(/\.[^/.]+$/, '') + '.pdf',
-                    url: attachment.url,
-                    mimetype: 'application/pdf'
-                };
-            }
-
-            res.json({ 
-                response: responseText,
-                sessionId: sessionId,
-                fileOutput: fileOutput
-            });
-        } catch (axiosError) {
-            // Handle request timeout or other axios errors
-            if (axiosError.name === 'AbortError' || axiosError.code === 'ECONNABORTED') {
-                throw new Error('Request timed out');
-            } else if (axiosError.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
-                throw new Error(`API error: ${axiosError.response.status} - ${JSON.stringify(axiosError.response.data)}`);
-            } else if (axiosError.request) {
-                // The request was made but no response was received
-                throw new Error('No response from API server');
+                // Store system instructions for future messages
+                if (systemInstruction) {
+                    sessions.set(sessionId + '_instructions', systemInstruction);
+                }
+                
+                const processingTime = Date.now() - startTime;
+                logRequest(req, res, 200, `Chat response generated in ${processingTime}ms`);
+                
+                return res.json({ response: responseText });
             } else {
-                // Something happened in setting up the request that triggered an Error
-                throw axiosError;
+                logRequest(req, res, 500, 'API response missing expected data structure');
+                return res.status(500).json({ error: 'Failed to generate response' });
             }
+            
+        } catch (error) {
+            clearTimeout(timeoutId);
+            
+            if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+                logRequest(req, res, 504, 'API request timeout');
+                return res.status(504).json({ error: 'Request timed out. Please try again.' });
+            }
+            
+            // Handle API-specific errors
+            if (error.response) {
+                const statusCode = error.response.status;
+                const errorData = error.response.data;
+                
+                logRequest(req, res, statusCode, `API error: ${JSON.stringify(errorData)}`);
+                
+                if (statusCode === 400) {
+                    return res.status(400).json({ error: 'Invalid request parameters' });
+                } else if (statusCode === 401 || statusCode === 403) {
+                    return res.status(500).json({ error: 'Authentication error with AI service' });
+                } else if (statusCode === 429) {
+                    return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
+                } else {
+                    return res.status(500).json({ error: 'Error from AI service' });
+                }
+            }
+            
+            logRequest(req, res, 500, `Unexpected error: ${error.message}`);
+            return res.status(500).json({ error: 'An unexpected error occurred' });
         }
+        
     } catch (error) {
-        console.error('Error:', error);
-        
-        let errorMessage = 'An error occurred while processing your request';
-        let statusCode = 500;
-        
-        if (error.message.includes('timed out')) {
-            errorMessage = 'The request to the AI service timed out. Please try again.';
-            statusCode = 504; // Gateway Timeout
-        } else if (error.message.includes('API error')) {
-            errorMessage = error.message;
-            statusCode = 502; // Bad Gateway
-        }
-        
-        res.status(statusCode).json({ error: errorMessage });
+        logRequest(req, res, 500, `Server error: ${error.message}`);
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -313,22 +426,29 @@ app.get('*', (req, res) => {
 app.post('/api/upload', upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
+            logRequest(req, res, 400, 'File upload missing file');
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        
+
         const fileUrl = `/uploads/${req.file.filename}`;
-        const fileInfo = {
-            originalName: req.file.originalname,
-            filename: req.file.filename,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            url: fileUrl
-        };
+        const originalName = req.file.originalname;
+        const mimeType = req.file.mimetype;
+        const fileSize = req.file.size;
+
+        logRequest(req, res, 200, `File uploaded: ${originalName}, size: ${fileSize} bytes`);
         
-        return res.json({ file: fileInfo });
+        res.json({
+            success: true,
+            file: {
+                url: fileUrl,
+                originalName: originalName,
+                mimeType: mimeType,
+                size: fileSize
+            }
+        });
     } catch (error) {
-        console.error('File upload error:', error);
-        return res.status(500).json({ error: 'File upload failed' });
+        logRequest(req, res, 500, `File upload error: ${error.message}`);
+        res.status(500).json({ error: 'File upload failed', details: error.message });
     }
 });
 
@@ -358,6 +478,108 @@ app.post('/api/convert-to-pdf', upload.single('file'), async (req, res) => {
         console.error('File conversion error:', error);
         return res.status(500).json({ error: 'File conversion failed' });
     }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Periodically cleanup old sessions (every hour)
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+setInterval(() => {
+    try {
+        const now = Date.now();
+        let cleanupCount = 0;
+        
+        // Clean up old sessions
+        for (const [key, session] of sessions.entries()) {
+            // Only process conversation sessions, not instruction sessions
+            if (!key.endsWith('_instructions')) {
+                if (sessions.has(key + '_lastActivity')) {
+                    const lastActivity = sessions.get(key + '_lastActivity');
+                    if (now - lastActivity > SESSION_TIMEOUT) {
+                        // Clean up conversation and related data
+                        sessions.delete(key);
+                        sessions.delete(key + '_instructions');
+                        sessions.delete(key + '_lastActivity');
+                        cleanupCount++;
+                    }
+                } else {
+                    // Set current time as last activity for sessions without timestamp
+                    sessions.set(key + '_lastActivity', now);
+                }
+            }
+        }
+        
+        // Clean up temporary upload files older than 24 hours
+        if (fs.existsSync(uploadsDir)) {
+            fs.readdir(uploadsDir, (err, files) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Error reading uploads directory:`, err);
+                    return;
+                }
+                
+                files.forEach(file => {
+                    const filePath = path.join(uploadsDir, file);
+                    fs.stat(filePath, (err, stats) => {
+                        if (err) {
+                            console.error(`[${new Date().toISOString()}] Error getting file stats:`, err);
+                            return;
+                        }
+                        
+                        const fileAge = now - stats.mtimeMs;
+                        if (fileAge > SESSION_TIMEOUT) {
+                            fs.unlink(filePath, err => {
+                                if (err) {
+                                    console.error(`[${new Date().toISOString()}] Error deleting file ${file}:`, err);
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        }
+        
+        if (cleanupCount > 0) {
+            console.log(`[${new Date().toISOString()}] Cleaned up ${cleanupCount} expired sessions`);
+        }
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error during cleanup:`, error);
+    }
+}, 60 * 60 * 1000); // Run every hour
+
+// Error handling for missing routes
+app.use((req, res) => {
+    logRequest(req, res, 404, 'Route not found');
+    res.status(404).json({ error: 'Not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        // A Multer error occurred when uploading
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            logRequest(req, res, 413, 'File too large');
+            return res.status(413).json({ 
+                error: 'File too large',
+                details: 'Maximum file size is 10MB'
+            });
+        }
+        logRequest(req, res, 400, `Multer error: ${err.message}`);
+        return res.status(400).json({ error: err.message });
+    }
+    
+    // For any other errors
+    const statusCode = err.statusCode || 500;
+    const errorMessage = err.message || 'An unexpected error occurred';
+    
+    logRequest(req, res, statusCode, `Error: ${errorMessage}`);
+    res.status(statusCode).json({ error: errorMessage });
 });
 
 // Export the Express app instead of starting it directly

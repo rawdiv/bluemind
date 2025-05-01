@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Node modules and logs
+node_modules
+npm-debug.log
+npm-error.log
+
+# Environment and local config
+.env
+.env.*
+.vscode
+*.log
+
+# Build and test directories
+coverage
+.nyc_output
+
+# Temporary files and uploads
+/uploads/*
+/tmp
+.DS_Store 
