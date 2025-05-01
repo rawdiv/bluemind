@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: brahma-ai-chatbot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false # This will prompt you to enter it in the Render dashboard 

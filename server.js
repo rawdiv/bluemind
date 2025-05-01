@@ -82,7 +82,11 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Apply CORS
-app.use(cors());
+app.use(cors({
+    origin: isProduction ? '*' : 'http://localhost:3000',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
@@ -484,6 +488,8 @@ app.post('/api/convert-to-pdf', upload.single('file'), async (req, res) => {
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
+        environment: process.env.NODE_ENV || 'development',
+        apiKeyConfigured: !!process.env.GEMINI_API_KEY,
         timestamp: new Date().toISOString(),
         uptime: process.uptime()
     });
@@ -580,6 +586,16 @@ app.use((err, req, res, next) => {
     
     logRequest(req, res, statusCode, `Error: ${errorMessage}`);
     res.status(statusCode).json({ error: errorMessage });
+});
+
+// Add a simple diagnostic route at the top level
+app.get('/debug', (req, res) => {
+    res.json({
+        environment: process.env.NODE_ENV || 'development',
+        apiKeyConfigured: !!process.env.GEMINI_API_KEY,
+        nodeVersion: process.version,
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Export the Express app instead of starting it directly

@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --production
 
 # Copy app source
 COPY . .
@@ -21,10 +21,9 @@ USER nodeuser
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Expose the port
+# Expose the port (Render will override this)
 EXPOSE 3000
 
 # Run the application
-CMD ["node", "server-local.js"] 
+CMD ["npm", "start"] 
