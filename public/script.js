@@ -7,11 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const newChatHeaderBtn = document.getElementById('newChatHeaderBtn');
     const optionsBtn = document.getElementById('optionsBtn');
     const fileInput = document.getElementById('fileInput');
+    const themeToggle = document.getElementById('themeToggle');
+    const authBtn = document.getElementById('authBtn');
 
     // Session management
-    let currentSessionId = 'default';
     let isGenerating = false;
     let attachedFile = null;
+    let currentSessionId = localStorage.getItem('current_session_id') || null;
     
     // Create scroll to bottom button
     const scrollButton = document.createElement('button');
@@ -62,8 +64,136 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error uploading file:', error);
         }
         
-        // Clear file input
-        fileInput.value = '';
+            // Clear file input
+    fileInput.value = '';
+});
+    
+    // Dark mode functionality
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+    }
+    
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+    }
+    
+    function updateThemeIcon(theme) {
+        if (theme === 'dark') {
+            themeToggle.textContent = '☀️';
+            themeToggle.title = 'Switch to light mode';
+        } else {
+            themeToggle.textContent = '🌙';
+            themeToggle.title = 'Switch to dark mode';
+        }
+    }
+    
+    // Initialize theme
+    initTheme();
+    
+
+    
+    // Theme toggle event listener
+    themeToggle.addEventListener('click', toggleTheme);
+    
+    // --- Auth State Management ---
+    // This ensures the Login/Signup button always works
+    setAuthState(isAuthenticated());
+    // Do NOT set authBtn.onclick manually elsewhere; setAuthState handles it.
+    function isAuthenticated() {
+        return !!localStorage.getItem('jwt_token');
+    }
+    function setAuthState(loggedIn) {
+        if (loggedIn) {
+            authBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            authBtn.className = 'auth-btn logout';
+            authBtn.onclick = handleLogout;
+        } else {
+            authBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login / Signup';
+            authBtn.className = 'auth-btn';
+            authBtn.onclick = () => { window.location.href = 'auth.html'; };
+        }
+    }
+    function handleLogout() {
+        localStorage.removeItem('jwt_token');
+        setAuthState(false);
+    }
+    function openAuthModal() {
+        authModal.style.display = 'flex';
+        loginTab.classList.add('active');
+        signupTab.classList.remove('active');
+        loginForm.style.display = 'flex';
+        signupForm.style.display = 'none';
+        loginError.textContent = '';
+        signupError.textContent = '';
+    }
+    // On page load
+    // setAuthState(isAuthenticated()); // This line is now redundant as setAuthState is called in DOMContentLoaded
+
+    // --- Modal Authentication Logic (updated) ---
+    // Remove this line if present:
+    // authBtn.onclick = isAuthenticated() ? handleLogout : openAuthModal;
+
+    // Handle login form submit
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginError.textContent = '';
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Login failed');
+            localStorage.setItem('jwt_token', data.token);
+            setAuthState(true);
+            authModal.style.display = 'none';
+        } catch (err) {
+            loginError.textContent = err.message;
+        }
+    });
+    // Handle signup form submit
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        signupError.textContent = '';
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirm = document.getElementById('signupConfirmPassword').value;
+        if (password !== confirm) {
+            signupError.textContent = 'Passwords do not match.';
+            return;
+        }
+        try {
+            const res = await fetch('/api/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Signup failed');
+            // Auto-login after signup
+            const loginRes = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok) throw new Error(loginData.error || 'Login failed');
+            localStorage.setItem('jwt_token', loginData.token);
+            setAuthState(true);
+            authModal.style.display = 'none';
+        } catch (err) {
+            signupError.textContent = err.message;
+        }
     });
     
     // Show file preview in chat
@@ -354,7 +484,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prepare request body
             const requestBody = { 
                 message: sentMessage,
-                sessionId: currentSessionId
+                sessionId: currentSessionId,
+                model: 'gemini' // always 'gemini'
             };
             
             // Add file info if there's an attachment
@@ -472,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.innerHTML = '';
         
         // Add custom welcome message
-        addMessage("Yo! I'm Brahma AI 😎\nLocally trained, crazy fast, and ready to help you build or automate whatever you're dreaming up.\nJust say the word and we'll cook something epic together 💻🚀", 'ai');
+        addMessage("Yo! I'm Blue Mind 😎\nLocally trained, crazy fast, and ready to help you build or automate whatever you're dreaming up.\nJust say the word and we'll cook something epic together 💻🚀", 'ai');
     }
 
     // Add message to chat
@@ -614,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Add initial welcome message
-    addMessage("Yo! I'm Brahma AI 😎\nLocally trained, crazy fast, and ready to help you build or automate whatever you're dreaming up.\nJust say the word and we'll cook something epic together 💻🚀", 'ai');
+                addMessage("Yo! I'm Blue Mind 😎\nLocally trained, crazy fast, and ready to help you build or automate whatever you're dreaming up.\nJust say the word and we'll cook something epic together 💻🚀", 'ai');
     
     // Add event listener for the header new chat button
     newChatHeaderBtn.addEventListener('click', async () => {
@@ -691,4 +822,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(error => {
         console.error('Error setting default instructions:', error);
     });
+
+    // Hamburger/Sidebar Toggle Logic
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    // Create overlay for mobile sidebar
+    let sidebarOverlay = document.querySelector('.sidebar-overlay');
+    if (!sidebarOverlay) {
+        sidebarOverlay = document.createElement('div');
+        sidebarOverlay.className = 'sidebar-overlay';
+        document.body.appendChild(sidebarOverlay);
+    }
+    function toggleSidebar() {
+        const isOpen = sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('active', isOpen);
+    }
+    sidebarToggle.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', toggleSidebar);
+    // Hide sidebar by default on mobile
+    function handleResize() {
+        if (window.innerWidth <= 900) {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        } else {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        }
+    }
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    // --- Chat History with Local Storage ---
+    const chatHistoryDiv = document.querySelector('.chat-history');
+    let chatSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
+
+    function saveChatSessions() {
+        localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
+    }
+    function saveCurrentSessionId() {
+        localStorage.setItem('current_session_id', currentSessionId);
+    }
+    function getSessionById(id) {
+        return chatSessions.find(s => s.id === id);
+    }
+    function renderChatHistory() {
+        chatHistoryDiv.innerHTML = '';
+        chatSessions.forEach(session => {
+            const btn = document.createElement('button');
+            btn.className = 'chat-history-item' + (session.id === currentSessionId ? ' active' : '');
+            btn.textContent = session.title || 'Untitled Chat';
+            btn.onclick = () => {
+                currentSessionId = session.id;
+                saveCurrentSessionId();
+                renderChatHistory();
+                loadSessionMessages();
+            };
+            chatHistoryDiv.appendChild(btn);
+        });
+    }
+    function createNewSession() {
+        const id = 'chat_' + Date.now();
+        const session = { id, title: 'New Chat', messages: [] };
+        chatSessions.unshift(session);
+        currentSessionId = id;
+        saveChatSessions();
+        saveCurrentSessionId();
+        renderChatHistory();
+        loadSessionMessages();
+    }
+    function loadSessionMessages() {
+        const session = getSessionById(currentSessionId);
+        if (!session) return;
+        chatMessages.innerHTML = '';
+        session.messages.forEach(msg => {
+            addMessage(msg.content, msg.sender);
+        });
+    }
+    function addMessageToSession(content, sender) {
+        const session = getSessionById(currentSessionId);
+        if (!session) return;
+        session.messages.push({ content, sender });
+        saveChatSessions();
+    }
+    // New Chat button
+    newChatBtn.addEventListener('click', createNewSession);
+    newChatHeaderBtn.addEventListener('click', createNewSession);
+    // On page load, initialize chat sessions
+    if (!currentSessionId || !getSessionById(currentSessionId)) {
+        createNewSession();
+    } else {
+        renderChatHistory();
+        loadSessionMessages();
+    }
+    // Patch addMessage to also save to session
+    const origAddMessage = window.addMessage;
+    window.addMessage = function(content, sender) {
+        origAddMessage(content, sender);
+        addMessageToSession(content, sender);
+    };
 }); 

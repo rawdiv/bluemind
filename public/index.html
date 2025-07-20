@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brahma AI</title>
+    <title>Blue Mind</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,7 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="new-chat">
                 <button id="newChatBtn">
                     <i class="fas fa-plus"></i>
@@ -22,14 +22,26 @@
             <div class="chat-history">
                 <!-- Chat history will be populated here -->
             </div>
+            <div class="auth-section">
+                <button id="authBtn" class="auth-btn" type="button">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login / Signup
+                </button>
+            </div>
         </aside>
         
         <main class="main-content">
             <div class="chat-header">
-                <div class="chat-title">Brahma AI</div>
                 <div class="header-actions">
-                    <button class="header-btn" id="newChatHeaderBtn" title="New Chat">
-                        <i class="fas fa-plus"></i>
+                    <button class="header-btn" id="sidebarToggle" title="Open sidebar" style="display:none;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                <div class="chat-title">Blue Mind</div>
+                <div class="header-actions">
+                    <!-- Removed duplicate New Chat button from header -->
+                    <button class="header-btn" id="themeToggle" title="Toggle dark mode">
+                        🌙
                     </button>
                     <button class="header-btn" id="optionsBtn" title="Options">
                         <i class="fas fa-ellipsis-h"></i>
@@ -45,7 +57,7 @@
                     <form id="chatForm">
                         <div class="attachment-btn">
                             <label for="fileInput" title="Attach a file">
-                                <i class="fas fa-paperclip"></i>
+                                📎
                             </label>
                             <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" style="display: none">
                         </div>
@@ -67,5 +79,46 @@
         </main>
     </div>
     <script src="script.js"></script>
+    
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <button class="modal-close" id="closeAuthModal">&times;</button>
+        <div class="modal-tabs">
+          <button id="loginTab" class="modal-tab active">Login</button>
+          <button id="signupTab" class="modal-tab">Sign Up</button>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <h2>Login to Blue Mind</h2>
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="auth-submit">Login</button>
+          <div class="auth-error" id="loginError"></div>
+        </form>
+        <form id="signupForm" class="auth-form" style="display:none;">
+          <h2>Sign Up for Blue Mind</h2>
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <input type="password" id="signupPassword" required autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="signupConfirmPassword">Confirm Password</label>
+            <input type="password" id="signupConfirmPassword" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="auth-submit">Sign Up</button>
+          <div class="auth-error" id="signupError"></div>
+        </form>
+      </div>
+    </div>
 </body>
 </html> 

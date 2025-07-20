@@ -1,6 +1,6 @@
 # Deploying to Render
 
-This guide will walk you through deploying the Brahma AI Chatbot to Render.
+This guide will walk you through deploying the Blue Mind Chatbot to Render.
 
 ## Option 1: Deploy with render.yaml (Recommended)
 
@@ -31,7 +31,7 @@ This guide will walk you through deploying the Brahma AI Chatbot to Render.
 3. **Connect your GitHub repository**.
 
 4. **Configure the following settings**:
-   - **Name**: Choose a name for your service (e.g., brahma-ai-chatbot)
+   - **Name**: Choose a name for your service (e.g., blue-mind-chatbot)
    - **Environment**: Node
    - **Region**: Choose the region closest to your users
    - **Branch**: main (or your preferred branch)

@@ -1,7 +1,7 @@
 {
-  "name": "brahma-ai-chatbot",
+  "name": "blue-mind-chatbot",
   "version": "1.0.0",
-  "description": "A modern chatbot using Google's Gemini API",
+  "description": "Blue Mind - A modern chatbot using Google's Gemini API",
   "main": "server-local.js",
   "scripts": {
     "start": "node start.js",
@@ -12,13 +12,16 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "brahma-ai-chatbot": "file:",
+    "bcrypt": "^6.0.0",
+    "blue-mind-chatbot": "file:",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
     "multer": "^1.4.5-lts.1",
     "uuid": "^9.0.1"
   },

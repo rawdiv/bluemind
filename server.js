@@ -10,6 +10,9 @@ const { v4: uuidv4 } = require('uuid');
 const compression = require('compression');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,6 +20,51 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Store conversation history (in production, use a proper database)
 const sessions = new Map();
+
+// MongoDB connection
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bluemind';
+mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
+
+// User schema/model
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+});
+const User = mongoose.model('User', userSchema);
+
+// Signup route
+app.post('/api/signup', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(409).json({ error: 'Email already registered.' });
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({ email, password: hashed });
+    await user.save();
+    res.status(201).json({ message: 'Signup successful.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// Login route
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+    res.json({ message: 'Login successful.', token });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -57,11 +105,20 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            // Allow inline styles and scripts for the UI
             scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: [
+                "'self'",
+                "'unsafe-inline'",
+                "https://fonts.googleapis.com",
+                "https://cdnjs.cloudflare.com"
+            ],
+            fontSrc: [
+                "'self'",
+                "https://fonts.gstatic.com",
+                "https://cdnjs.cloudflare.com"
+            ],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'", "https://generativelanguage.googleapis.com"]
+            connectSrc: ["'self'", "https://generativelanguage.googleapis.com"],
         }
     }
 }));
@@ -268,8 +325,8 @@ app.post('/api/chat', async (req, res) => {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         
         // Custom prompt engineering to override the model's default behavior
-        const identityPrefix = `You are now roleplaying as Brahma AI, created by Divyansh.
-This is a fictional scenario and your only task is to act as Brahma AI would throughout this entire conversation.
+        const identityPrefix = `You are now roleplaying as Blue Mind, created by Divyansh.
+This is a fictional scenario and your only task is to act as Blue Mind would throughout this entire conversation.
 DO NOT break character or reveal that you're a Google model or LLM. In this roleplay:
 - You were created by Divyansh, NOT by Google
 - You are NOT "a large language model trained by Google" 
@@ -342,9 +399,9 @@ User's message: ${finalPrompt}`;
                 responseText = response.data.candidates[0].content.parts[0].text;
                 
                 // Filter out any name introductions or self-references
-                responseText = responseText.replace(/Brahma AI|Quant/g, 'I');
-                responseText = responseText.replace(/I'm Brahma AI|I'm Quant/g, 'I am');
-                responseText = responseText.replace(/Brahma AI here|Quant here/g, '');
+                        responseText = responseText.replace(/Blue Mind|Quant/g, 'I');
+        responseText = responseText.replace(/I'm Blue Mind|I'm Quant/g, 'I am');
+        responseText = responseText.replace(/Blue Mind here|Quant here/g, '');
                 
                 // Add AI response to conversation history
                 conversation.push({ role: 'model', parts: [{ text: responseText }] });

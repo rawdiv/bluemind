@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: brahma-ai-chatbot
+    name: blue-mind-chatbot
     env: node
     plan: free
     buildCommand: npm install
