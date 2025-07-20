@@ -856,6 +856,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatHistoryDiv = document.querySelector('.chat-history');
     let chatSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
 
+    // Ensure currentSessionId is always a valid string
+    if (!currentSessionId || typeof currentSessionId !== 'string' || currentSessionId.length === 0) {
+        const id = 'chat_' + Date.now();
+        currentSessionId = id;
+        const session = { id, title: 'New Chat', messages: [] };
+        chatSessions.unshift(session);
+        saveChatSessions();
+        saveCurrentSessionId();
+    }
+
     function saveChatSessions() {
         localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
     }
@@ -884,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = 'chat_' + Date.now();
         const session = { id, title: 'New Chat', messages: [] };
         chatSessions.unshift(session);
-        currentSessionId = id;
+        currentSessionId = id + '';
         saveChatSessions();
         saveCurrentSessionId();
         renderChatHistory();
