@@ -124,77 +124,67 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('jwt_token');
         setAuthState(false);
     }
-    function openAuthModal() {
-        authModal.style.display = 'flex';
-        loginTab.classList.add('active');
-        signupTab.classList.remove('active');
-        loginForm.style.display = 'flex';
-        signupForm.style.display = 'none';
-        loginError.textContent = '';
-        signupError.textContent = '';
-    }
-    // On page load
-    // setAuthState(isAuthenticated()); // This line is now redundant as setAuthState is called in DOMContentLoaded
+    // Remove all modal auth logic and event listeners for loginForm, signupForm, or authModal
 
     // --- Modal Authentication Logic (updated) ---
     // Remove this line if present:
     // authBtn.onclick = isAuthenticated() ? handleLogout : openAuthModal;
 
     // Handle login form submit
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        loginError.textContent = '';
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
-        try {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Login failed');
-            localStorage.setItem('jwt_token', data.token);
-            setAuthState(true);
-            authModal.style.display = 'none';
-        } catch (err) {
-            loginError.textContent = err.message;
-        }
-    });
+    // loginForm.addEventListener('submit', async (e) => {
+    //     e.preventDefault();
+    //     loginError.textContent = '';
+    //     const email = document.getElementById('loginEmail').value;
+    //     const password = document.getElementById('loginPassword').value;
+    //     try {
+    //         const res = await fetch('/api/login', {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: JSON.stringify({ email, password })
+    //         });
+    //         const data = await res.json();
+    //         if (!res.ok) throw new Error(data.error || 'Login failed');
+    //         localStorage.setItem('jwt_token', data.token);
+    //         setAuthState(true);
+    //         authModal.style.display = 'none';
+    //     } catch (err) {
+    //         loginError.textContent = err.message;
+    //     }
+    // });
     // Handle signup form submit
-    signupForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        signupError.textContent = '';
-        const email = document.getElementById('signupEmail').value;
-        const password = document.getElementById('signupPassword').value;
-        const confirm = document.getElementById('signupConfirmPassword').value;
-        if (password !== confirm) {
-            signupError.textContent = 'Passwords do not match.';
-            return;
-        }
-        try {
-            const res = await fetch('/api/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Signup failed');
-            // Auto-login after signup
-            const loginRes = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const loginData = await loginRes.json();
-            if (!loginRes.ok) throw new Error(loginData.error || 'Login failed');
-            localStorage.setItem('jwt_token', loginData.token);
-            setAuthState(true);
-            authModal.style.display = 'none';
-        } catch (err) {
-            signupError.textContent = err.message;
-        }
-    });
+    // signupForm.addEventListener('submit', async (e) => {
+    //     e.preventDefault();
+    //     signupError.textContent = '';
+    //     const email = document.getElementById('signupEmail').value;
+    //     const password = document.getElementById('signupPassword').value;
+    //     const confirm = document.getElementById('signupConfirmPassword').value;
+    //     if (password !== confirm) {
+    //         signupError.textContent = 'Passwords do not match.';
+    //         return;
+    //     }
+    //     try {
+    //         const res = await fetch('/api/signup', {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: JSON.stringify({ email, password })
+    //         });
+    //         const data = await res.json();
+    //         if (!res.ok) throw new Error(data.error || 'Signup failed');
+    //         // Auto-login after signup
+    //         const loginRes = await fetch('/api/login', {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: JSON.stringify({ email, password })
+    //         });
+    //         const loginData = await loginRes.json();
+    //         if (!loginRes.ok) throw new Error(loginData.error || 'Login failed');
+    //         localStorage.setItem('jwt_token', loginData.token);
+    //         setAuthState(true);
+    //         authModal.style.display = 'none';
+    //     } catch (err) {
+    //         signupError.textContent = err.message;
+    //     }
+    // });
     
     // Show file preview in chat
     function showFilePreview(file) {
@@ -839,18 +829,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     sidebarToggle.addEventListener('click', toggleSidebar);
     sidebarOverlay.addEventListener('click', toggleSidebar);
-    // Hide sidebar by default on mobile
-    function handleResize() {
-        if (window.innerWidth <= 900) {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('active');
-        } else {
+    // Only close sidebar if resizing to desktop
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 900) {
             sidebar.classList.remove('open');
             sidebarOverlay.classList.remove('active');
         }
-    }
-    window.addEventListener('resize', handleResize);
-    handleResize();
+    });
 
     // --- Chat History with Local Storage ---
     const chatHistoryDiv = document.querySelector('.chat-history');
@@ -930,4 +915,13 @@ document.addEventListener('DOMContentLoaded', () => {
         origAddMessage(content, sender);
         addMessageToSession(content, sender);
     };
+
+    // Place this at the very end of DOMContentLoaded to guarantee attachment
+    const subscribeProBtn = document.getElementById('subscribeProBtn');
+    if (subscribeProBtn) {
+        subscribeProBtn.onclick = function(e) {
+            e.preventDefault();
+            window.location.href = 'subscribe.html';
+        };
+    }
 }); 

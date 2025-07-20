@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blue Mind – Subscription Plans</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .sub-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2rem 0 1rem 0;
+      justify-content: center;
+    }
+    .sub-header a {
+      color: #0084ff;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.18s;
+    }
+    .sub-header a:hover {
+      color: #6b48ff;
+      text-decoration: underline;
+    }
+    .sub-title {
+      text-align: center;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.01em;
+    }
+    .sub-desc {
+      text-align: center;
+      color: #666;
+      font-size: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+    .plans-table {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 2.5rem auto;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+      overflow: hidden;
+    }
+    .plans-table th, .plans-table td {
+      padding: 1.2rem 1.1rem;
+      text-align: left;
+      font-size: 1.08rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .plans-table th {
+      background: #f8f9fa;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #6b48ff;
+      text-align: center;
+    }
+    .plans-table td.price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0084ff;
+      text-align: center;
+    }
+    .plans-table td {
+      vertical-align: top;
+      color: #444;
+    }
+    .plans-table tr:last-child td {
+      border-bottom: none;
+    }
+    .plan-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0.8rem 0;
+      background: linear-gradient(90deg, #6b48ff 0%, #0084ff 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.08rem;
+      font-weight: 600;
+      margin-top: 1.2rem;
+      cursor: pointer;
+      transition: background 0.18s, box-shadow 0.18s;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+    }
+    .plan-btn:hover {
+      background: linear-gradient(90deg, #0084ff 0%, #6b48ff 100%);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.16);
+    }
+    .plan-tier {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 0.2rem;
+      text-align: center;
+    }
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      color: #444;
+      font-size: 1rem;
+    }
+    .plan-features li {
+      margin-bottom: 0.7em;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+    }
+    .plan-features li:before {
+      content: '✔';
+      color: #0084ff;
+      font-size: 1.1em;
+      margin-right: 4px;
+    }
+    @media (max-width: 900px) {
+      .plans-table th, .plans-table td {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.98rem;
+      }
+      .plans-table td.price {
+        font-size: 1.15rem;
+      }
+    }
+    @media (max-width: 600px) {
+      .plans-table, .plans-table thead, .plans-table tbody, .plans-table th, .plans-table td, .plans-table tr {
+        display: block;
+        width: 100%;
+      }
+      .plans-table th {
+        text-align: left;
+        font-size: 1.05rem;
+      }
+      .plans-table td {
+        font-size: 0.97rem;
+      }
+      .plans-table td.price {
+        font-size: 1.05rem;
+      }
+    }
+    .desktop-only { display: table; }
+    .mobile-only { display: none; }
+    @media (max-width: 700px) {
+      .desktop-only { display: none !important; }
+      .mobile-only { display: flex !important; flex-direction: column; gap: 1.5rem; margin: 0 0.5rem 2.5rem 0.5rem; }
+      .plan-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+        padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 0;
+      }
+      .plan-card .plan-tier {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 0.2rem;
+        text-align: left;
+      }
+      .plan-card .price {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #0084ff;
+        margin-bottom: 0.7rem;
+      }
+      .plan-card .per-month {
+        font-size: 0.95em;
+        color: #888;
+        font-weight: 400;
+      }
+      .plan-card .plan-features {
+        margin-bottom: 1.1rem;
+      }
+      .plan-card .plan-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sub-header">
+    <a href="index.html"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+  </div>
+  <div class="sub-title">Choose Your Plan</div>
+  <div class="sub-desc">Unlock the full power of Blue Mind with a subscription tailored to your needs.</div>
+  <table class="plans-table desktop-only">
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>Price (INR/month)</th>
+        <th>Key Features</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="plan-tier">Basic</td>
+        <td class="price">₹199</td>
+        <td>
+          <ul class="plan-features">
+            <li>Access to core GPT chat interface for simple queries.</li>
+            <li>Limited to 50 AI-generated responses per day.</li>
+            <li>Basic customization options for website themes.</li>
+            <li>Email support during business hours.</li>
+            <li>Ad-supported experience with occasional promotions.</li>
+          </ul>
+        </td>
+        <td><button class="plan-btn">Subscribe</button></td>
+      </tr>
+      <tr>
+        <td class="plan-tier">Standard</td>
+        <td class="price">₹399</td>
+        <td>
+          <ul class="plan-features">
+            <li>Everything in Basic, plus unlimited GPT responses.</li>
+            <li>Advanced AI tools for content creation (e.g., blog posts, summaries).</li>
+            <li>Interactive features like personalized chatbots and user analytics.</li>
+            <li>Priority email and chat support.</li>
+            <li>No ads, with early access to new AI updates.</li>
+          </ul>
+        </td>
+        <td><button class="plan-btn">Subscribe</button></td>
+      </tr>
+      <tr>
+        <td class="plan-tier">Premium</td>
+        <td class="price">₹999</td>
+        <td>
+          <ul class="plan-features">
+            <li>Everything in Standard, plus custom AI model training on your data.</li>
+            <li>Unlimited interactive sessions with multi-user collaboration.</li>
+            <li>Advanced integrations (e.g., API access for external apps).</li>
+            <li>24/7 premium support with dedicated account manager.</li>
+            <li>Exclusive features like AI-powered analytics dashboards and priority feature requests.</li>
+          </ul>
+        </td>
+        <td><button class="plan-btn">Subscribe</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Responsive card layout for mobile -->
+  <div class="plans-cards mobile-only">
+    <div class="plan-card">
+      <div class="plan-tier">Basic</div>
+      <div class="price">₹199 <span class="per-month">/month</span></div>
+      <ul class="plan-features">
+        <li>Access to core GPT chat interface for simple queries.</li>
+        <li>Limited to 50 AI-generated responses per day.</li>
+        <li>Basic customization options for website themes.</li>
+        <li>Email support during business hours.</li>
+        <li>Ad-supported experience with occasional promotions.</li>
+      </ul>
+      <button class="plan-btn">Subscribe</button>
+    </div>
+    <div class="plan-card">
+      <div class="plan-tier">Standard</div>
+      <div class="price">₹399 <span class="per-month">/month</span></div>
+      <ul class="plan-features">
+        <li>Everything in Basic, plus unlimited GPT responses.</li>
+        <li>Advanced AI tools for content creation (e.g., blog posts, summaries).</li>
+        <li>Interactive features like personalized chatbots and user analytics.</li>
+        <li>Priority email and chat support.</li>
+        <li>No ads, with early access to new AI updates.</li>
+      </ul>
+      <button class="plan-btn">Subscribe</button>
+    </div>
+    <div class="plan-card">
+      <div class="plan-tier">Premium</div>
+      <div class="price">₹999 <span class="per-month">/month</span></div>
+      <ul class="plan-features">
+        <li>Everything in Standard, plus custom AI model training on your data.</li>
+        <li>Unlimited interactive sessions with multi-user collaboration.</li>
+        <li>Advanced integrations (e.g., API access for external apps).</li>
+        <li>24/7 premium support with dedicated account manager.</li>
+        <li>Exclusive features like AI-powered analytics dashboards and priority feature requests.</li>
+      </ul>
+      <button class="plan-btn">Subscribe</button>
+    </div>
+  </div>
+  <div class="sub-desc" style="max-width: 700px; margin: 0 auto 2.5rem auto;">
+    <b>Note:</b> All plans are billed monthly. You can upgrade, downgrade, or cancel anytime. For enterprise or custom needs, <a href="mailto:support@bluemind.com" style="color:#0084ff;">contact us</a>.
+  </div>
+</body>
+</html> 
