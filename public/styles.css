@@ -954,3 +954,31 @@ body {
   margin-right: 4px;
 }
 */ 
+
+.pro-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(255, 204, 51, 0.08);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.pro-btn i {
+  color: #ff9800;
+  font-size: 1.1em;
+}
+.pro-btn:hover {
+  background: linear-gradient(90deg, #ffd700 0%, #ffb347 100%);
+  color: #222;
+  box-shadow: 0 4px 16px rgba(255, 204, 51, 0.16);
+} 

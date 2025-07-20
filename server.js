@@ -15,6 +15,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+app.set('trust proxy', 1); // trust first proxy for rate limiting and proxies
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -241,7 +242,11 @@ app.post('/api/chat', async (req, res) => {
     const startTime = Date.now();
     
     try {
-        const { message, sessionId = 'default', systemInstruction, attachment } = req.body;
+        let { message, sessionId, systemInstruction, attachment } = req.body;
+        // Ensure sessionId is always a valid string
+        if (typeof sessionId !== 'string' || !sessionId || sessionId.length > 50) {
+            sessionId = 'default';
+        }
         
         if (!message && !attachment) {
             logRequest(req, res, 400, 'Bad request: Message or attachment is required');
