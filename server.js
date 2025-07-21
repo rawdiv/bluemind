@@ -16,6 +16,7 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.set('trust proxy', 1); // trust first proxy for rate limiting and proxies
+app.use(express.json());
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -47,7 +48,8 @@ app.post('/api/signup', async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'Signup successful.' });
   } catch (err) {
-    res.status(500).json({ error: 'Server error.' });
+    console.error('Signup error:', err);
+    res.status(500).json({ error: 'Server error.' + (process.env.NODE_ENV !== 'production' ? ' ' + err.message : '') });
   }
 });
 
@@ -63,7 +65,8 @@ app.post('/api/login', async (req, res) => {
     const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
     res.json({ message: 'Login successful.', token });
   } catch (err) {
-    res.status(500).json({ error: 'Server error.' });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error.' + (process.env.NODE_ENV !== 'production' ? ' ' + err.message : '') });
   }
 });
 
